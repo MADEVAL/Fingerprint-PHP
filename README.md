@@ -1,5 +1,9 @@
 # GLOBUS.studio Fingerprint
 
+[![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/supported-versions.php)
+[![Tests passed](https://img.shields.io/badge/tests-passed-brightgreen)](https://github.com/globus-studio/fingerprint/actions/workflows/ci.yml)
+[![Coverage 100%](https://img.shields.io/badge/coverage-100%25-brightgreen)](docs/testing.md)
+
 `globus-studio/fingerprint` is a privacy-aware server-side PHP fingerprinting library for security, risk scoring, and probabilistic client identification.
 
 It is designed for PHP 8.3, PHP 8.4, PHP 8.5 and modern deployments behind Nginx, Apache, IIS, CDN, load balancers, RoadRunner, Swoole, and PSR-7 compatible runtimes.
