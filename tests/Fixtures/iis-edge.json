@@ -1,0 +1,17 @@
+{
+  "expectedId": "gsfp_v1_0ed0395eb02eb2c57369cdfd1fb8661b3785512402fa2b5aaedb5cb245442c8c",
+  "secret": "golden-secret",
+  "server": {
+    "REQUEST_METHOD": "GET",
+    "REQUEST_URI": "/orders",
+    "SERVER_PROTOCOL": "HTTP/2",
+    "SERVER_SOFTWARE": "Microsoft-IIS/10.0",
+    "REMOTE_ADDR": "192.0.2.25",
+    "HTTPS": "on",
+    "HTTP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+    "HTTP_ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "HTTP_ACCEPT_LANGUAGE": "en-GB,en;q=0.9",
+    "HTTP_ACCEPT_ENCODING": "gzip, deflate, br",
+    "HTTP_SEC_CH_UA_PLATFORM": "\"Windows\""
+  }
+}

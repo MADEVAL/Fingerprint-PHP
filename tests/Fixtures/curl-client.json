@@ -1,0 +1,13 @@
+{
+  "expectedId": "gsfp_v1_876c75c4209d8792b63ebbcafcd8c9125674b8e0743af5e4ff43f9c891881519",
+  "secret": "golden-secret",
+  "server": {
+    "REQUEST_METHOD": "GET",
+    "REQUEST_URI": "/api/status",
+    "SERVER_PROTOCOL": "HTTP/1.1",
+    "SERVER_SOFTWARE": "nginx",
+    "REMOTE_ADDR": "8.8.8.8",
+    "HTTP_USER_AGENT": "curl/8.5.0",
+    "HTTP_ACCEPT": "*/*"
+  }
+}

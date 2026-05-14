@@ -1,0 +1,74 @@
+{
+  "name": "globus-studio/fingerprint",
+  "description": "Server-side PHP fingerprinting library for security, risk scoring, and privacy-aware client identification.",
+  "type": "library",
+  "homepage": "https://globus.studio",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Yevhen Leonidov",
+      "homepage": "https://globus.studio",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=8.3 <9.0",
+    "ext-filter": "*",
+    "ext-hash": "*",
+    "ext-json": "*"
+  },
+  "support": {
+    "docs": "https://github.com/globus-studio/fingerprint/tree/main/docs",
+    "issues": "https://github.com/globus-studio/fingerprint/issues",
+    "source": "https://github.com/globus-studio/fingerprint"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.76",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^11.5 || ^12.0"
+  },
+  "suggest": {
+    "ext-intl": "Improves Unicode and locale normalization.",
+    "ext-sodium": "Enables optional Sodium hashing.",
+    "psr/http-message": "Required for PSR-7 request integration.",
+    "psr/log": "Allows diagnostic logging.",
+    "ua-parser/uap-php": "Can be used by applications for richer User-Agent parsing."
+  },
+  "autoload": {
+    "psr-4": {
+      "GlobusStudio\\Fingerprint\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "GlobusStudio\\Fingerprint\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "analyse": "phpstan analyse --memory-limit=1G",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs:fix": "php-cs-fixer fix",
+    "test": "phpunit --colors=always",
+    "test:coverage": "phpunit --coverage-text --colors=always"
+  },
+  "config": {
+    "allow-plugins": false,
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "keywords": [
+    "browser-fingerprint",
+    "device-fingerprint",
+    "fingerprint",
+    "fraud-detection",
+    "laravel",
+    "laminas",
+    "php",
+    "psr-7",
+    "risk-scoring",
+    "security",
+    "slim",
+    "symfony"
+  ]
+}

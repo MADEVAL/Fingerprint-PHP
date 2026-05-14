@@ -1,0 +1,20 @@
+{
+  "expectedId": "gsfp_v1_f3b34cb8d5d8001a4bf740846a254476aef72cc6e914338c94769edc4748c69d",
+  "secret": "golden-secret",
+  "trustedProxies": ["173.245.48.0/20"],
+  "trustedHeaders": ["cf-connecting-ip", "x-forwarded-for", "x-forwarded-proto"],
+  "server": {
+    "REQUEST_METHOD": "GET",
+    "REQUEST_URI": "/checkout",
+    "SERVER_PROTOCOL": "HTTP/2",
+    "SERVER_SOFTWARE": "nginx",
+    "REMOTE_ADDR": "173.245.48.5",
+    "HTTP_CF_CONNECTING_IP": "203.0.113.10",
+    "HTTP_CF_RAY": "abc123-WAW",
+    "HTTP_X_FORWARDED_PROTO": "https",
+    "HTTP_USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "HTTP_ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "HTTP_ACCEPT_LANGUAGE": "pl-PL,pl;q=0.9,en-US;q=0.6,en;q=0.5",
+    "HTTP_ACCEPT_ENCODING": "gzip, deflate, br"
+  }
+}

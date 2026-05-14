@@ -1,0 +1,16 @@
+{
+  "expectedId": "gsfp_v1_901812fcca178839fee2d89f43f7f93b57e4af381febc5f64e5da8a39a415fd0",
+  "secret": "golden-secret",
+  "server": {
+    "REQUEST_METHOD": "GET",
+    "REQUEST_URI": "/dashboard",
+    "SERVER_PROTOCOL": "HTTP/1.1",
+    "SERVER_SOFTWARE": "Apache/2.4.59",
+    "GATEWAY_INTERFACE": "CGI/1.1",
+    "REMOTE_ADDR": "198.51.100.77",
+    "HTTP_USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "HTTP_ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "HTTP_ACCEPT_LANGUAGE": "de-DE,de;q=0.8,en-US;q=0.5,en;q=0.3",
+    "HTTP_ACCEPT_ENCODING": "gzip, deflate, br"
+  }
+}

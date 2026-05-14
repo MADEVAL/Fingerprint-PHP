@@ -1,0 +1,18 @@
+{
+  "expectedId": "gsfp_v1_3a7ee0aa32e77cf5e2dc9c0b5ba35096c5fb91286f2f8c19c79fa8eceb619982",
+  "secret": "golden-secret",
+  "server": {
+    "REQUEST_METHOD": "GET",
+    "REQUEST_URI": "/mobile",
+    "SERVER_PROTOCOL": "HTTP/2",
+    "SERVER_SOFTWARE": "Caddy",
+    "REMOTE_ADDR": "198.51.100.200",
+    "HTTP_USER_AGENT": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+    "HTTP_ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "HTTP_ACCEPT_LANGUAGE": "en-US,en;q=0.9",
+    "HTTP_ACCEPT_ENCODING": "gzip, deflate, br",
+    "HTTP_SEC_CH_UA_MOBILE": "?1",
+    "HTTP_SEC_CH_UA_PLATFORM": "\"Android\"",
+    "HTTP_SEC_CH_UA_MODEL": "\"Pixel 8\""
+  }
+}
