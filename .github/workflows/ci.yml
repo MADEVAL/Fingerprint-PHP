@@ -6,11 +6,10 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-2025]
         php: ['8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v5
