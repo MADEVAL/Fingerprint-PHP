@@ -30,11 +30,8 @@ final class IpNormalizer
 
         if ($version === 4) {
             $prefix = max(0, min(32, $ipv4PrefixLength));
+            /** @var int $ipLong */
             $ipLong = ip2long($ipAddress);
-
-            if ($ipLong === false) {
-                return null;
-            }
 
             $mask = $prefix === 0 ? 0 : ((-1 << (32 - $prefix)) & 0xFFFFFFFF);
             $network = long2ip($ipLong & $mask);
@@ -44,18 +41,11 @@ final class IpNormalizer
 
         if ($version === 6) {
             $prefix = max(0, min(128, $ipv6PrefixLength));
+            /** @var string $packed */
             $packed = inet_pton($ipAddress);
 
-            if ($packed === false) {
-                return null;
-            }
-
-            /** @var array<int, int>|false $unpackedBytes */
+            /** @var array<int, int> $unpackedBytes */
             $unpackedBytes = unpack('C*', $packed);
-
-            if ($unpackedBytes === false) {
-                return null;
-            }
 
             $bytes = array_values($unpackedBytes);
             $remainingBits = $prefix;
@@ -116,12 +106,10 @@ final class IpNormalizer
             return false;
         }
 
+        /** @var string $ipPacked */
         $ipPacked = inet_pton($ipAddress);
+        /** @var string $networkPacked */
         $networkPacked = inet_pton($network);
-
-        if ($ipPacked === false || $networkPacked === false) {
-            return false;
-        }
 
         $bytesToCheck = intdiv($prefixLength, 8);
         $remainingBits = $prefixLength % 8;

@@ -150,10 +150,6 @@ final class FingerprintBuilder
         $availableWeight = array_sum(array_map(static fn(Signal $signal): int => max(0, $signal->weight()), $includedSignals));
         $expectedWeight = array_sum(FingerprintConfig::DEFAULT_WEIGHTS);
 
-        if ($expectedWeight <= 0) {
-            return 0;
-        }
-
         $score = (int) round(($availableWeight / $expectedWeight) * 100);
 
         if ($signals->get('risk.untrusted_forwarded_header') !== null) {

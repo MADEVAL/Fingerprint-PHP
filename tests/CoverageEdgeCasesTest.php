@@ -8,7 +8,9 @@ use DateTimeImmutable;
 use GlobusStudio\Fingerprint\Collector\FrameworkSignalCollector;
 use GlobusStudio\Fingerprint\Configuration\FingerprintConfig;
 use GlobusStudio\Fingerprint\Configuration\HashingConfig;
+use GlobusStudio\Fingerprint\Configuration\PrivacyMode;
 use GlobusStudio\Fingerprint\Configuration\SignalConfig;
+use GlobusStudio\Fingerprint\Configuration\TrustedProxiesConfig;
 use GlobusStudio\Fingerprint\Diagnostics\FingerprintDiagnostics;
 use GlobusStudio\Fingerprint\Exception\ConfigurationException;
 use GlobusStudio\Fingerprint\Exception\UnsupportedEnvironmentException;
@@ -35,6 +37,7 @@ use GlobusStudio\Fingerprint\Signal\SignalSet;
 use GlobusStudio\Fingerprint\Signal\SignalStability;
 use GlobusStudio\Fingerprint\Signal\SignalType;
 use GlobusStudio\Fingerprint\Tests\Support\ServerFixtures;
+use GlobusStudio\Fingerprint\Tests\Support\SodiumFunctionAvailability;
 use PHPUnit\Framework\TestCase;
 
 final class CoverageEdgeCasesTest extends TestCase
@@ -54,11 +57,15 @@ final class CoverageEdgeCasesTest extends TestCase
         $headers->set('x-test', 'b');
         $headers->set('X-Empty', new \stdClass());
 
+        $diagnostics->addWarning('warning');
         $diagnostics->addUnavailableCollector('collector');
 
+        self::assertSame(PrivacyMode::Custom, FingerprintConfig::custom('test-secret')->privacyMode());
+        self::assertTrue(TrustedProxiesConfig::create(['*'])->isTrusted('203.0.113.10'));
         self::assertSame(7, $signalConfig->weight());
         self::assertFalse($signalConfig->enabled());
         self::assertSame(['collector'], $diagnostics->unavailableCollectors());
+        self::assertSame(['warnings' => ['warning'], 'unavailableCollectors' => ['collector']], $diagnostics->toArray());
         self::assertSame('UTC', (new TimezoneNormalizer())->normalize(' UTC '));
         self::assertSame('text/html;level=1,application/json;q=1', HeaderNormalizer::normalizeCommaSeparatedQValues('TEXT/HTML;LEVEL=1;, application/json;q=1.000'));
         self::assertSame('a, b', $headers->get('x-test'));
@@ -77,6 +84,28 @@ final class CoverageEdgeCasesTest extends TestCase
         self::assertFalse(IpNormalizer::matchesCidr('8.8.8.8', '2001:db8::/32'));
         self::assertFalse(IpNormalizer::matchesCidr('8.8.8.8', 'bad-cidr/24'));
         self::assertFalse(IpNormalizer::matchesCidr('8.8.8.8', '8.8.4.0/24'));
+        self::assertTrue(IpNormalizer::matchesCidr('8.8.8.8', '8.8.8.0/24'));
+    }
+
+    public function testHeaderCollectorLimitsCharsetsAndDisabledClientHints(): void
+    {
+        $server = ServerFixtures::nginxChrome([
+            'HTTP_ACCEPT_CHARSET' => 'UTF-8;q=.7, ISO-8859-1;q=1',
+            'HTTP_SEC_CH_UA' => '"Chromium";v="124"',
+        ]);
+
+        for ($index = 0; $index < 101; ++$index) {
+            $server['HTTP_X_TEST_' . $index] = 'v';
+        }
+
+        $result = FingerprintBuilder::fromRequestContext(
+            RequestContext::fromArrays($server),
+            FingerprintConfig::balanced('test-secret')->includeClientHints(false),
+        )->build();
+
+        self::assertContains('header.limit_exceeded', $result->ignoredSignalNames());
+        self::assertSame('utf-8;q=0.7,iso-8859-1;q=1', $result->signalValue('header.accept_charset'));
+        self::assertNull($result->signalValue('client_hints.brands'));
     }
 
     public function testNetworkCollectorEdgeCases(): void
@@ -94,11 +123,20 @@ final class CoverageEdgeCasesTest extends TestCase
             'REMOTE_ADDR' => '10.0.0.10',
             'HTTP_X_REAL_IP' => '203.0.113.9',
         ])), FingerprintConfig::balanced('test-secret')->withTrustedProxies(['10.0.0.0/8'])->withTrustedHeaders(['x-real-ip']))->build();
+        $trustedWithoutForwardedFor = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(ServerFixtures::nginxChrome([
+            'REMOTE_ADDR' => '10.0.0.10',
+        ])), FingerprintConfig::balanced('test-secret')->withTrustedProxies(['10.0.0.0/8'])->withTrustedHeaders(['x-real-ip']))->build();
+        $trustedWithEmptyForwardedForChain = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(ServerFixtures::nginxChrome([
+            'REMOTE_ADDR' => '10.0.0.10',
+            'HTTP_X_FORWARDED_FOR' => 'not-an-ip',
+        ])), FingerprintConfig::balanced('test-secret')->withTrustedProxies(['10.0.0.0/8'])->withTrustedHeaders(['x-forwarded-for']))->build();
 
         self::assertContains('ip.invalid', $invalid->ignoredSignalNames());
         self::assertSame('203.0.113.0/24', $cloudflare->signalValue('ip.prefix'));
         self::assertSame('203.0.113.0/24', $trueClient->signalValue('ip.prefix'));
         self::assertSame('203.0.113.0/24', $realIp->signalValue('ip.prefix'));
+        self::assertSame('10.0.0.0/24', $trustedWithoutForwardedFor->signalValue('ip.prefix'));
+        self::assertSame('10.0.0.0/24', $trustedWithEmptyForwardedForChain->signalValue('ip.prefix'));
     }
 
     public function testFrameworkRuntimeFallbacksAndEmptyHeaderOrder(): void
@@ -147,17 +185,34 @@ final class CoverageEdgeCasesTest extends TestCase
                 throw new \RuntimeException('broken');
             }
         };
+        $reliabilityCollector = new class implements \GlobusStudio\Fingerprint\Collector\SignalCollectorInterface {
+            public function collect(RequestContext $request, FingerprintConfig $config): SignalSet
+            {
+                return new SignalSet([
+                    new Signal('custom.high', SignalType::Header, 'raw', 'high', 2, SignalStability::Stable, SignalSensitivity::Low, 'test', true, 'included', 'high'),
+                    new Signal('custom.low', SignalType::Header, 'raw', 'low', 2, SignalStability::Stable, SignalSensitivity::Low, 'test', true, 'included', 'low'),
+                ]);
+            }
+        };
 
         $customHash = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(ServerFixtures::nginxChrome()), FingerprintConfig::balanced('test-secret'))
             ->withHasher($hasher)
             ->withLogger($logger)
             ->withCollector($throwingCollector)
             ->build();
+        $withoutLogger = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(ServerFixtures::nginxChrome()), FingerprintConfig::balanced('test-secret'))
+            ->withCollector($throwingCollector)
+            ->build();
+        $withReliabilitySignals = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(ServerFixtures::nginxChrome()), FingerprintConfig::balanced('test-secret'))
+            ->withCollector($reliabilityCollector)
+            ->build();
         $noSignals = FingerprintBuilder::fromRequestContext(RequestContext::fromArrays(['REMOTE_ADDR' => 'not-an-ip']), FingerprintConfig::balanced('test-secret')->disableSignals(array_keys(FingerprintConfig::DEFAULT_WEIGHTS)))->build();
 
         self::assertStringStartsWith('gsfp_v1_', $fromGlobals->id());
         self::assertSame('custom-hash', $customHash->id());
         self::assertSame('Fingerprint collector failed.', $logger->warnings[0][0]);
+        self::assertSame(['broken'], $withoutLogger->diagnostics()->warnings());
+        self::assertGreaterThan(0, $withReliabilitySignals->entropyScore());
         self::assertSame(0, $noSignals->stabilityScore());
     }
 
@@ -215,19 +270,19 @@ final class CoverageEdgeCasesTest extends TestCase
                 return 'bad';
             }
 
-            public function getMethod(): array
+            public function getMethod(): object
             {
-                return [];
+                return new \stdClass();
             }
 
-            public function getUri(): array
+            public function getUri(): object
             {
-                return [];
+                return new \stdClass();
             }
 
-            public function getProtocolVersion(): array
+            public function getProtocolVersion(): object
             {
-                return [];
+                return new \stdClass();
             }
         };
         $context = (new Psr7RequestContextFactory())->fromRequest($badPsrRequest);
@@ -248,19 +303,19 @@ final class CoverageEdgeCasesTest extends TestCase
                 $this->cookies = new \stdClass();
             }
 
-            public function getMethod(): array
+            public function getMethod(): object
             {
-                return [];
+                return new \stdClass();
             }
 
-            public function getRequestUri(): array
+            public function getRequestUri(): object
             {
-                return [];
+                return new \stdClass();
             }
 
-            public function getClientIp(): array
+            public function getClientIp(): object
             {
-                return [];
+                return new \stdClass();
             }
         });
 
@@ -295,18 +350,83 @@ final class CoverageEdgeCasesTest extends TestCase
             $hash = (new SodiumHasher())->hash(new CanonicalPayload(['signals' => ['a' => 'b']]), HashingConfig::production('test-secret'));
             self::assertStringStartsWith('gsfp_v1_', $hash);
         } else {
-            self::assertTrue(true);
+            self::markTestSkipped('The sodium extension is not available.');
         }
+    }
+
+    public function testSodiumHasherReportsMissingExtension(): void
+    {
+        SodiumFunctionAvailability::$available = false;
+
+        try {
+            $this->expectException(UnsupportedEnvironmentException::class);
+
+            (new SodiumHasher())->hash(new CanonicalPayload(['signals' => ['a' => 'b']]), HashingConfig::production('test-secret'));
+        } finally {
+            SodiumFunctionAvailability::$available = null;
+        }
+    }
+
+    public function testMatcherRiskReasonsAndDistanceLevels(): void
+    {
+        $sameKnown = new FingerprintResult('known', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('a', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('b', SignalType::Header, null, 'old', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('c', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $changedCurrent = new FingerprintResult('current', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('a', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('b', SignalType::Header, null, 'new', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('c', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $suspiciousCurrent = new FingerprintResult('current', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('a', SignalType::Header, null, 'new', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('b', SignalType::Header, null, 'new', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('c', SignalType::Header, null, 'new', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('d', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('e', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $suspiciousKnown = new FingerprintResult('known', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('a', SignalType::Header, null, 'old', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('b', SignalType::Header, null, 'old', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('c', SignalType::Header, null, 'old', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('d', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+            new Signal('e', SignalType::Header, null, 'same', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $proxyCurrent = new FingerprintResult('current', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 40, new SignalSet([
+            new Signal('proxy.chain_shape', SignalType::Proxy, null, 'proxy', 1, SignalStability::Medium, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $emptyKnown = new FingerprintResult('known', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet(), []);
+        $largeDistanceCurrent = new FingerprintResult('current', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('x', SignalType::Header, null, 'new', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+        $largeDistanceKnown = new FingerprintResult('known', 'gsfp-v1', 'balanced', new DateTimeImmutable(), 0, 0, 0, 0, new SignalSet([
+            new Signal('x', SignalType::Header, null, 'old', 1, SignalStability::Stable, SignalSensitivity::Low, 'test'),
+        ]), []);
+
+        $matcher = new FingerprintMatcher();
+        $changed = $matcher->compare($changedCurrent, $sameKnown);
+        $suspicious = $matcher->compare($suspiciousCurrent, $suspiciousKnown);
+        $proxyRisk = $matcher->compare($proxyCurrent, $emptyKnown);
+        $largeDistance = $matcher->compare($largeDistanceCurrent, $largeDistanceKnown);
+
+        self::assertSame(MatchLevel::Changed, $changed->level());
+        self::assertSame(MatchLevel::Suspicious, $suspicious->level());
+        self::assertContains('proxy_chain_appeared', $proxyRisk->riskReasons());
+        self::assertContains('current_risk_score_high', $proxyRisk->riskReasons());
+        self::assertContains('large_fingerprint_distance', $largeDistance->riskReasons());
     }
 
     public function testRequestContextFactoryAndRemainingAccessors(): void
     {
         $context = (new RequestContextFactory())->fromArrays(ServerFixtures::nginxChrome(), ['a' => 'b']);
         $signal = new Signal('special', SignalType::Header, 'raw', 'secret', 1, SignalStability::Stable, SignalSensitivity::Special, 'test');
+        $rawSignal = new Signal('regular', SignalType::Header, 'raw', 'normalized', 1, SignalStability::Stable, SignalSensitivity::Low, 'test');
 
         self::assertSame(['a' => 'b'], $context->cookies()->all());
         self::assertInstanceOf(\DateTimeImmutable::class, $context->receivedAt());
         self::assertSame('[omitted]', $signal->toSafeArray(true)['normalizedValue']);
         self::assertArrayNotHasKey('rawValue', $signal->toSafeArray(true));
+        self::assertSame('raw', $rawSignal->toSafeArray(true)['rawValue']);
     }
 }

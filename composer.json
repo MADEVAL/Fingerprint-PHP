@@ -40,6 +40,9 @@
     }
   },
   "autoload-dev": {
+    "files": [
+      "tests/Support/SodiumFunctionAvailability.php"
+    ],
     "psr-4": {
       "GlobusStudio\\Fingerprint\\Tests\\": "tests/"
     }
