@@ -86,6 +86,12 @@ if ($match->level()->isSuspicious()) {
 - [Laminas](docs/frameworks/laminas.md)
 - [Slim](docs/frameworks/slim.md)
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+---
+
 ## Important Limits
 
 Server-side fingerprinting is probabilistic. NAT, VPN, corporate proxies, mobile networks, browser privacy protections, CDN rewrites, and browser updates can all change signals. Do not use a fingerprint as the only authentication or blocking factor.
